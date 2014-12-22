@@ -56,14 +56,17 @@ class WebhookController extends \PHPCI\Controller
     public function bitbucket($project)
     {
         $payload = json_decode($this->getParam('payload'), true);
+        $projectObj = $this->projectStore->getById($project);
+        $branches = array_map('trim', explode(',', $projectObj->getBranch()));
 
         foreach ($payload['commits'] as $commit) {
             try {
-                $email = $commit['raw_author'];
-                $email = substr($email, 0, strpos($email, '>'));
-                $email = substr($email, strpos($email, '<') + 1);
-
-                $this->createBuild($project, $commit['raw_node'], $commit['branch'], $email, $commit['message']);
+                if (in_array($commit['branch'], $branches)) {
+                    $email = $commit['raw_author'];
+                    $email = substr($email, 0, strpos($email, '>'));
+                    $email = substr($email, strpos($email, '<') + 1);
+                    $this->createBuild($project, $commit['raw_node'], $commit['branch'], $email, $commit['message']);
+                }
             } catch (\Exception $ex) {
                 header('HTTP/1.1 500 Internal Server Error');
                 header('Ex: ' . $ex->getMessage());
